@@ -26,7 +26,7 @@ def get_hist_kline_fuquan_2(qstart=None, qend=None, type=None, codeid=None, tn=N
         tn = "stock_market_hist_kline_nofuquan"
     ccode = codeid
     print "codeID=" + str(ccode)
-    engine = create_engine('mysql://root:smartk123@120.26.72.215/smartk_demo?charset=utf8', pool_size=20, echo=True)
+    engine = create_engine('mysql://{param}/smartk_demo?charset=utf8', pool_size=20, echo=True)
     if codeid is None:
         # select a.code,b.timeToMarket from stock_industry_classified a left join stock_market_basics_info b on a.code=b.code;
         result = engine.execute(
@@ -82,7 +82,7 @@ def get_hist_kline_fuquan(qstart=None, qend=None, type=None, codeid=None, tn=Non
         tn = "stock_market_hist_kline_nofuquan"
     ccode = codeid
     print "codeID=" + str(ccode)
-    engine = create_engine('mysql://root:smartk123@120.26.72.215/smartk_demo?charset=utf8', pool_size=1, echo=True)
+    engine = create_engine('mysql://{param}/smartk_demo?charset=utf8', pool_size=1, echo=True)
     if codeid is None:
         # select code from stock_industry_classified a where a.index>2700
         # select code from stock_industry_classified
@@ -138,7 +138,7 @@ def get_hist_kline_fuquan(qstart=None, qend=None, type=None, codeid=None, tn=Non
             return
         try:
             df = pd.concat(frames)
-            engine = create_engine('mysql://root:smartk123@120.26.72.215/smartk_demo?charset=utf8', pool_size=1,
+            engine = create_engine('mysql://{param}/smartk_demo?charset=utf8', pool_size=1,
                                    echo=True)
             df.to_sql(tn, engine, if_exists='append', chunksize=1000)
             print 'records=%d' % (records)

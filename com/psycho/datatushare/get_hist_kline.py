@@ -20,7 +20,7 @@ def get_stockhist_byall(qstart=None, qend=None, kt='D', codeid=None, tn=None):
         tn = "stock_market_hist_kline_day"
     ccode = codeid
     print "codeID=" + str(ccode)
-    engine = create_engine('mysql://root:smartk123@120.26.72.215/smartk_demo?charset=utf8', pool_size=20, echo=True)
+    engine = create_engine('mysql://{param}/smartk_demo?charset=utf8', pool_size=20, echo=True)
     if codeid is None:
         # select code from stock_industry_classified a where a.index>2658
         # select code from stock_industry_classified
@@ -113,7 +113,7 @@ if __name__ == '__main__':
 # get_stockhist_byall(tn="stock_market_hist_kline_day")
 
 '''
-engine = create_engine('mysql://root:stock_160909@123.56.218.96/stock_model?charset=utf8', pool_size=20)
+engine = create_engine('mysql://{param}/stock_model?charset=utf8', pool_size=20)
 df = ts.get_hist_data('600654', start='2014-01-01', end='2016-09-25', ktype='D', retry_count=4, pause=2)
 df['code'] = '600654'
 df.to_sql('stock_market_hist_kline_day', engine, if_exists='append', chunksize=1000)
