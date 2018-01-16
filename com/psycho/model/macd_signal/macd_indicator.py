@@ -47,14 +47,16 @@ class MACD_INDICATOR(object):
         rolling_data_max = self.stock_data[parameter].rolling(points_num, center=True).max()
         if len(macd_data) < points_num:
             raise ValueError  # 点数不够，无法判断顶点
-        peak_point_list = []
+        peak_point_time_list = []
+        peak_point_value_list = []
         for i in range(int(points_num/2), len(macd_data.index)-int(points_num/2)):
             middle_point = macd_data.index[i]
             middle_point_value = macd_data.loc[macd_data.index[i]]
             if middle_point_value == rolling_data_max.loc[middle_point]:  # 判断是否顶点
-                peak_point_list.append([middle_point, middle_point_value])
-        #         print(peak_point_list)
-        return peak_point_list
+                peak_point_time_list.append(middle_point)
+                peak_point_value_list.append(middle_point_value)
+        s = pd.Series(peak_point_value_list, index=peak_point_time_list)
+        return s
 
     # 获取macd指标，diff值的底点。取5个点的数据，判断中间点的数值是否是最小值，如是则判定为底点
     def get_bottom_points(self, parameter='macd'):
