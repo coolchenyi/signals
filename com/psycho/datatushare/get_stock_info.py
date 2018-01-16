@@ -7,7 +7,7 @@
 import tushare as ts
 from sqlalchemy import create_engine
 
-engine = create_engine('mysql://root:smartk123@120.26.72.215/smartk_demo?charset=utf8', pool_size=1)
+engine = create_engine('mysql://{param}/smartk_demo?charset=utf8', pool_size=1)
 
 
 # 按行业分类区分

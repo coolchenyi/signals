@@ -8,7 +8,7 @@ import logging
 
 logging.basicConfig()
 
-engine = create_engine('mysql://root:smartk123@120.26.72.215/smartk_demo?charset=utf8', pool_size=20, echo=True)
+engine = create_engine('mysql://{param}/smartk_demo?charset=utf8', pool_size=20, echo=True)
 
 s_time_am = datetime.datetime.strptime('09:30:00', '%H:%M:%S')
 e_time_am = datetime.datetime.strptime('11:29:59', '%H:%M:%S')

@@ -11,7 +11,7 @@ import tushare as ts
 def get_real_kline_all(tn=None):
     if tn is None:
         tn = "stock_market_kline_today"
-    engine = create_engine('mysql://root:smartk123@120.26.72.215/smartk_demo?charset=utf8', pool_size=20, echo=True)
+    engine = create_engine('mysql://{param}/smartk_demo?charset=utf8', pool_size=20, echo=True)
     df = ts.get_today_all()
     if df is None or len(df) == 0:
         print  "real_kline result is NULL"
