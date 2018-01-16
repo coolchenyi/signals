@@ -63,20 +63,26 @@ class MACD_INDICATOR(object):
         rolling_data_min = self.stock_data[parameter].rolling(points_num, center=True).min()
         if len(macd_data) < points_num:
             raise ValueError
-        bottom_point_list = []
+        bottom_point_time_list = []
+        bottom_point_value_list = []
         for i in range(int(points_num/2), len(macd_data.index)-int(points_num/2)):
             middle_point = macd_data.index[i]
             middle_point_value = macd_data.loc[macd_data.index[i]]
             if middle_point_value == rolling_data_min.loc[middle_point]:  # 判断是否底点
-                bottom_point_list.append([middle_point, middle_point_value])
-        return bottom_point_list
-
+                bottom_point_time_list.append(middle_point)
+                bottom_point_value_list.append(middle_point_value)
+        s = pd.Series(bottom_point_value_list, index=bottom_point_time_list)
+        return s
 
 # 获取MACD指标DIFF值顶点/底点对应的K线值，最高/最低价
+    def get_kline_high_price(self):
+        pass
 
-# MACD图作线
+    def get_kline_low_price(self):
+        pass
 
 
+#以下为测试
 stock_macd = MACD_INDICATOR(startdate, enddate, stock_id)
 print(stock_macd)
 print(stock_macd.get_peak_points())  # print(stock_macd.get_bottom_points())
