@@ -23,7 +23,7 @@ def get_kline_trend(start_time, end_time, stock_id, period='day', price_type='hi
     将时间坐标进行整型数转换，起点时间为0
     采用普通最小二乘法进行线性回归  Ordinary Least Squares，得到斜率和截距系数
     再将开始时间和结束时间代入线性回归模型，得到趋势线起点与终点预测值
-    :return:
+
     '''
     cnx = mysql.connector.connect(user='ai_team', password='123456', host='120.26.72.215', database='smartk_demo',
                                   port='3306')
