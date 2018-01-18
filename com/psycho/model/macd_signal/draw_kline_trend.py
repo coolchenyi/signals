@@ -14,13 +14,16 @@ import matplotlib.pyplot as plt
 
 from sklearn import linear_model
 
-start_time = datetime.date(2017, 12, 21)
+start_time = datetime.date(2017, 6, 1)
 end_time = datetime.date(2018, 1, 3)
-start_time1 = datetime.date(2017, 6, 1)
+start_time1 = datetime.date(2017, 12, 21)
 end_time1 = datetime.date(2018, 1, 3)
 stock_id = '000938'
 #########
 #数据库连接部分
+cnx = mysql.connector.connect(user='ai_team', password='123456', host='120.26.72.215', database='smartk_demo',
+port='3306')
+cursor = cnx.cursor()
 
 ############
 
@@ -58,7 +61,7 @@ def get_kline_trend(start_time, end_time, stock_id, period='day', price_type='hi
 
 print(get_kline_trend(start_time,end_time,stock_id))
 
-def draw_kline_and_trend_line(start_time, end_time, stock_id, trend_points=pd.Series({datetime.date(2017, 12, 21): 65.77, datetime.date(2018, 1, 3): 75.66})):
+def draw_kline_and_trend_line(start_time, end_time, stock_id, trend_points):
 
     # 重新选择k线图绘制的时间区间,注意顺序为date，open，close，high，low
     query = "SELECT date,open,close,high,low,volume,amount,lpad(code,6,'0') FROM stock_market_hist_kline_nofuquan WHERE date BETWEEN %s and %s and code=%s"
@@ -83,4 +86,5 @@ def draw_kline_and_trend_line(start_time, end_time, stock_id, trend_points=pd.Se
     plt.show()
     return
 
-draw_kline_and_trend_line(start_time1, end_time1, stock_id)
+trend_points1 = get_kline_trend(start_time1,end_time1,stock_id)
+draw_kline_and_trend_line(start_time, end_time, stock_id, trend_points1)
