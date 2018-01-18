@@ -19,10 +19,10 @@ end_time = datetime.date(2018, 1, 3)
 start_time1 = datetime.date(2017, 6, 1)
 end_time1 = datetime.date(2018, 1, 3)
 stock_id = '000938'
+#########
+#数据库连接部分
 
-cnx = mysql.connector.connect(user='ai_team', password='123456', host='120.26.72.215', database='smartk_demo',
-                              port='3306')
-cursor = cnx.cursor()
+############
 
 
 def get_kline_trend(start_time, end_time, stock_id, period='day', price_type='high'):
