@@ -13,6 +13,7 @@ import matplotlib.finance as mpf
 import matplotlib.pyplot as plt
 
 from sklearn import linear_model
+from macd_indicator import MACD_INDICATOR
 
 start_time = datetime.date(2017, 6, 1)
 end_time = datetime.date(2018, 1, 3)
@@ -68,7 +69,7 @@ def draw_kline_and_trend_line(start_time, end_time, stock_id, trend_points):
     cursor.execute(query, (start_time, end_time, stock_id))
     data = cursor.fetchall()
     df = pd.DataFrame(data, columns=['date', 'open', 'close', 'high',  'low', 'volume', 'amount', 'code'])
-    fig, ax = plt.subplots(figsize=(14, 7))
+    macd_data1 = MACD_INDICATOR(start_time, end_time, stock_id, 'day')
     qutotes = []
     for index,(d,o,c,h,l) in enumerate(
         zip(df.date, df.open, df.close, df.high, df.low )
@@ -77,12 +78,40 @@ def draw_kline_and_trend_line(start_time, end_time, stock_id, trend_points):
         d = mpf.date2num(d)
         val = (d,o,c,h,l)
         qutotes.append(val)
-    #使用candlestick_ochl函数绘图，ochl代表open，close，high，low
-    mpf.candlestick_ochl(ax, qutotes, width=0.6, colorup='red', colordown='green', alpha=0.75)
-    ax.autoscale_view()
-    ax.xaxis_date()
-    plt.plot(trend_points.index,trend_points.values)
+    #绘制图表
+    plt.rc('axes', grid=True)
+    plt.rc('grid', color='0.75', linestyle='-', linewidth=0.5)
 
+    textsize = 9
+    left, width = 0.1, 0.8
+    rect1 = [left, 0.3, width, 0.6]
+    rect2 = [left, 0.1, width, 0.2]
+    fig = plt.figure(facecolor='white')
+    axescolor = '#f6f6f6'  # the axes background color
+    ax1 = fig.add_axes(rect1, axisbg=axescolor)  # left, bottom, width, height
+    ax2 = fig.add_axes(rect2, axisbg=axescolor, sharex=ax1)
+
+
+    # fig, ax = plt.subplots(figsize=(14, 7))
+    #使用candlestick_ochl函数绘图，ochl代表open，close，high，low
+    mpf.candlestick_ochl(ax1, qutotes, width=0.6, colorup='red', colordown='green', alpha=0.75)
+    ax1.autoscale_view()
+    ax1.xaxis_date()
+    ax1.plot(trend_points.index,trend_points.values)
+    #绘制macd图
+    kl_index = macd_data1.stock_data.index
+    dif = macd_data1.stock_data['macd']
+    dea = macd_data1.stock_data['macds']
+    bar = macd_data1.stock_data['macdh']
+    ax2.plot(kl_index, dif, label='macd dif')
+    ax2.plot(kl_index, dea, label='dea')
+    bar_red = np.where(bar > 0, bar, 0)
+    bar_green = np.where(bar < 0, bar, 0)
+    # 绘制bar>0的柱状图
+    ax2.bar(kl_index, bar_red, facecolor='red', label='hist bar')
+    # 绘制bar<0的柱状图
+    ax2.bar(kl_index, bar_green, facecolor='green', label='hist bar')
+    # ax2.legend(loc='left')
     plt.show()
     return
 
