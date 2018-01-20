@@ -22,8 +22,7 @@ end_time1 = datetime.date(2018, 1, 18)
 stock_id = '002309'
 #########
 #数据库连接部分
-cnx = mysql.connector.connect(user='ai_team', password='123456', host='120.26.72.215', database='smartk_demo',
-port='3306')
+
 cursor = cnx.cursor()
 
 ############
