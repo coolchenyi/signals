@@ -19,9 +19,10 @@ start_time = datetime.date(2017, 6, 1)
 end_time = datetime.date(2018, 1, 18)
 start_time1 = datetime.date(2017, 12, 21)
 end_time1 = datetime.date(2018, 1, 18)
-stock_id = '002309'
+stock_id = '600031'
 #########
 #数据库连接部分
+
 
 cursor = cnx.cursor()
 

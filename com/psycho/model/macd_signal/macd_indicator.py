@@ -23,7 +23,8 @@ class MACD_INDICATOR(object):
         self.indicator_code = code
         self.period = period
         #数据库连接
-        cnx = mysql.connector.connect()
+
+
         cursor = cnx.cursor()
         before_start_time = start_time-datetime.timedelta(days=60)
         query = "SELECT date,open,high,close,low,volume,amount,lpad(code,6,'0') FROM stock_market_hist_kline_nofuquan WHERE date BETWEEN %s and %s and code=%s"
