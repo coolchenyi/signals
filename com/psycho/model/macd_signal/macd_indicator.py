@@ -8,9 +8,9 @@ import mysql.connector
 import stockstats
 
 
-startdate = datetime.date(2017, 6, 1)
-today = enddate = datetime.date.today()
-stock_id = '000938'
+# startdate = datetime.date(2017, 6, 1)
+# today = enddate = datetime.date.today()
+# stock_id = '000938'
 
 
 class MACD_INDICATOR(object):
@@ -22,14 +22,16 @@ class MACD_INDICATOR(object):
         self.indicator_end_time = end_time
         self.indicator_code = code
         self.period = period
-        cnx = mysql.connector.connect(user='ai_team', password='123456', host='120.26.72.215', database='smartk_demo',
-                                      port='3306')
+        #数据库连接
+
+
         cursor = cnx.cursor()
+        before_start_time = start_time-datetime.timedelta(days=60)
         query = "SELECT date,open,high,close,low,volume,amount,lpad(code,6,'0') FROM stock_market_hist_kline_nofuquan WHERE date BETWEEN %s and %s and code=%s"
-        cursor.execute(query, (start_time, end_time, code))
+        cursor.execute(query, (before_start_time, end_time, code))
         data = cursor.fetchall()
         df = pd.DataFrame(data, columns=['date', 'open', 'high', 'close', 'low', 'volume', 'amount', 'code'])
-        if len(df) < 30:  # 因MACD默认的慢线参数是26，如要获取准确的MACD值，尽量延长时间周期
+        if len(df) < 60:  # 因MACD默认的慢线参数是26，如要获取准确的MACD值，尽量延长时间周期
             print('time period is too short for MACD calculation')
         df = df.sort_values(by=['date'], ascending=True)
         self.stock_data = stockstats.StockDataFrame.retype(df)
@@ -76,15 +78,10 @@ class MACD_INDICATOR(object):
         s = pd.Series(bottom_point_value_list, index=bottom_point_time_list)
         return s
 
-# 获取MACD指标DIFF值顶点/底点对应的K线值，最高/最低价
-    def get_kline_high_price(self):
-        pass
 
-    def get_kline_low_price(self):
-        pass
 
 
 #以下为测试
-stock_macd = MACD_INDICATOR(startdate, enddate, stock_id)
-print(stock_macd)
-print(stock_macd.get_peak_points())  # print(stock_macd.get_bottom_points())
+# stock_macd = MACD_INDICATOR(startdate, enddate, stock_id)
+# print(stock_macd)
+# print(stock_macd.get_peak_points())  # print(stock_macd.get_bottom_points())
