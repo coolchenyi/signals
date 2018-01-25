@@ -15,13 +15,14 @@ import matplotlib.pyplot as plt
 from sklearn import linear_model
 from macd_indicator import MACD_INDICATOR
 
-start_time = datetime.date(2017, 6, 1)
-end_time = datetime.date(2018, 1, 18)
+start_time = datetime.date(2017,1,1)
+end_time = datetime.date(2017,12,30)
 start_time1 = datetime.date(2017, 12, 21)
 end_time1 = datetime.date(2018, 1, 18)
 stock_id = '600031'
 #########
 #数据库连接部分
+
 
 
 cursor = cnx.cursor()
@@ -63,7 +64,7 @@ def get_kline_trend(start_time, end_time, stock_id, period='day', price_type='hi
 
 # print(get_kline_trend(start_time,end_time,stock_id))
 
-def draw_kline_and_trend_line(start_time, end_time, stock_id, trend_points = None):
+def draw_kline_macd_trend_line(start_time, end_time, stock_id, trend_points = None):
 
     # 重新选择k线图绘制的时间区间,注意顺序为date，open，close，high，low
     query = "SELECT date,open,close,high,low,volume,amount,lpad(code,6,'0') FROM stock_market_hist_kline_nofuquan WHERE date BETWEEN %s and %s and code=%s"
@@ -84,11 +85,14 @@ def draw_kline_and_trend_line(start_time, end_time, stock_id, trend_points = Non
     left, width = 0.1, 0.8
     rect1 = [left, 0.3, width, 0.6]
     rect2 = [left, 0.1, width, 0.2]
-    fig = plt.figure(facecolor='white')
+    fig = plt.figure(figsize=(16,9),facecolor='white')
     axescolor = '#f6f6f6'  # the axes background color
+
     ax1 = fig.add_axes(rect1, axisbg=axescolor)  # left, bottom, width, height
+    plt.title('Stock ID:'+stock_id+'   Data start from:'+str(start_time)+' to :'+str(end_time))
     ax2 = fig.add_axes(rect2, axisbg=axescolor, sharex=ax1)
 
+    # plt.title('ssssss')
     #绘制k线图，使用candlestick_ochl函数绘图，ochl代表open，close，high，low
     mpf.candlestick_ochl(ax1, qutotes, width=0.6, colorup='red', colordown='green', alpha=0.75)
     ax1.autoscale_view()
@@ -97,6 +101,7 @@ def draw_kline_and_trend_line(start_time, end_time, stock_id, trend_points = Non
     #绘制macd图,因macd慢线由26天数据计算，将计算的数据期间拉长
     before_start_time = start_time-datetime.timedelta(days=60)
     macd_data = MACD_INDICATOR(before_start_time, end_time, stock_id, 'day')
+    #开始时间与k线图上的开始时间对齐
     macd_data.stock_data.drop(macd_data.stock_data[macd_data.stock_data.index<start_time].index, inplace=True)
     kl_index = macd_data.stock_data.index
     dif = macd_data.stock_data['macd']
@@ -118,8 +123,26 @@ def draw_kline_and_trend_line(start_time, end_time, stock_id, trend_points = Non
     for i in range(len(macd_peak_points)-1):
         trend_points = get_kline_trend(macd_peak_points.index[i],macd_peak_points.index[i+1], stock_id)
         ax1.plot(trend_points.index,trend_points.values)
-    plt.show()
+    #输出股票每段趋势线的开始结束时间
+    trendline_list = []
+    for i in range(len(macd_peak_points)-1):
+        trendline_list.append([stock_id,macd_peak_points.index[i],macd_peak_points.index[i+1],None])
+    trendline_df = pd.DataFrame(trendline_list,columns=['stock_id','start_time','end_time','signal'])
+    trendline_output_path = r'C:\smartkline\output\macd\\' + stock_id + '_'+str(start_time) + '_'+str(end_time) + '.csv'
+    trendline_df.to_csv(trendline_output_path)
+    #输出图表
+    fig_output_path = r'C:\smartkline\output\macd\\' + stock_id + '_'+str(start_time) + '_'+str(end_time) + '.png'
+    plt.savefig(fig_output_path)
+    # plt.show()
     return
 
-# trend_points1 = get_kline_trend(start_time1,end_time1,stock_id)
-draw_kline_and_trend_line(start_time, end_time, stock_id)
+#测试数据
+# draw_kline_macd_trend_line(start_time,end_time,stock_id)
+#批量生成
+query1 = "SELECT DISTINCT lpad(code,6,'0') FROM stock_market_hist_kline_nofuquan WHERE date BETWEEN %s and %s"
+cursor.execute(query1,(start_time, end_time))
+data = cursor.fetchall()
+# s1 = pd.Series(data)
+print(data)
+for i in range(3024, len(data)):
+    draw_kline_macd_trend_line(start_time,end_time, data[i][0])
