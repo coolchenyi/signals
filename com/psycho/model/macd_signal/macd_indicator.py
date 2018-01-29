@@ -12,6 +12,10 @@ import stockstats
 # today = enddate = datetime.date.today()
 # stock_id = '000938'
 
+#数据库连接
+
+
+cursor = cnx.cursor()
 
 class MACD_INDICATOR(object):
 
@@ -22,10 +26,7 @@ class MACD_INDICATOR(object):
         self.indicator_end_time = end_time
         self.indicator_code = code
         self.period = period
-        #数据库连接
 
-
-        cursor = cnx.cursor()
         before_start_time = start_time-datetime.timedelta(days=60)
         query = "SELECT date,open,high,close,low,volume,amount,lpad(code,6,'0') FROM stock_market_hist_kline_nofuquan WHERE date BETWEEN %s and %s and code=%s"
         cursor.execute(query, (before_start_time, end_time, code))
