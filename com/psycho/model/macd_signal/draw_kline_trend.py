@@ -18,11 +18,10 @@ from macd_indicator import MACD_INDICATOR
 start_time = datetime.date(2017,11,1)
 end_time = datetime.date(2017,12,30)
 start_time1 = datetime.date(2017, 12, 21)
-end_time1 = datetime.date(2018, 1, 18)
+end_time1 = datetime.date(2017, 12, 30)
 stock_id = '600031'
 #########
 #数据库连接部分
-
 
 cursor = cnx.cursor()
 
@@ -92,7 +91,7 @@ def get_bottom_points(start_time, end_time, stock_id, period='day', price_type='
     s = pd.Series(bottom_point_value_list, index=bottom_point_time_list)
     return s
 
-print(get_bottom_points(start_time, end_time, stock_id))
+# print(get_bottom_points(start_time, end_time, stock_id))
 
 def get_kline_trend(start_time, end_time, stock_id, period='day', price_type='high'):
     '''
@@ -119,11 +118,10 @@ def get_kline_trend(start_time, end_time, stock_id, period='day', price_type='hi
     x_data = time_map.index.values
     y_data = df['high'].values
     # print(x_data, y_data)
-    xt = x_data.reshape(-1, 1)  # 将x数据转化为n samples，1 feature 的数据，numpy array or sparse matrix of shape [n_samples,n_features]
-    yt = y_data.reshape(-1, 1)  # 将y数据转化为n samles，1 target 的数据，numpy array of shape [n_samples, n_targets]
-    # print(xt, yt)
+    X = x_data.reshape(-1, 1)  # 将x数据转化为n samples，1 feature 的数据，numpy array or sparse matrix of shape [n_samples,n_features]
+    Y = y_data.reshape(-1, 1)  # 将y数据转化为n samles，1 target 的数据，numpy array of shape [n_samples, n_targets]
     reg = linear_model.LinearRegression()
-    reg.fit(xt, yt)
+    reg.fit(X, Y)
     # LinearRegression(copy_X=True, fit_intercept=True, n_jobs=1, normalize=False)
     y_start = reg.predict([0])
     y_end = reg.predict(x_data[-1])
@@ -131,8 +129,34 @@ def get_kline_trend(start_time, end_time, stock_id, period='day', price_type='hi
     # print(trend_points )
     return trend_points
 
-
 # print(get_kline_trend(start_time,end_time,stock_id))
+
+def get_macd_trend(data_source,start_time, end_time, stock_id, period='day', macd_trend_type='macdh'):
+    '''
+    :param data_source:macd指标计算结果的数据源。因macd指标值计算需要更长的时间段，所以不能直接使用start_time来取数计算
+    :param start_time: macd趋势线绘制的时间坐标轴上开始时间
+    :param end_time: macd趋势线绘制的时间坐标轴上结束时间
+    :param stock_id: 所绘趋势线的股票代码
+    :param period: 时间周期，日、60分钟、30分钟、15分钟
+    :param macd_trend_type: 使用哪个指标值来拟合出趋势线，dif：'macd'，dea:'macds'，bar:'macdh'
+    :return:
+    '''
+    #将数据源上的时间对齐开始时间
+    macd_trend_df = data_source.drop(data_source[data_source.index < start_time].index)
+    time_map = pd.Series(macd_trend_df.index)   # 构造一个交易时间与X轴坐标的映射 ,取整型数
+    x_data = time_map.index.values
+    y_data = macd_trend_df['macdh'].values
+    X = x_data.reshape(-1,1)
+    Y = y_data.reshape(-1,1)
+    reg = linear_model.LinearRegression()
+    reg.fit(X, Y)
+    y_start = reg.predict([0])
+    y_end = reg.predict(x_data[-1])
+    trend_points = pd.Series({time_map.iloc[0]: y_start[0][0], time_map.iloc[-1]: y_end[0][0]})
+    return trend_points
+
+data_source = MACD_INDICATOR(start_time, end_time, stock_id).stock_data
+print(get_macd_trend(data_source,start_time1, end_time1, stock_id))
 
 def draw_kline_macd_trend_line(start_time, end_time, stock_id, trend_points = None):
     '''
