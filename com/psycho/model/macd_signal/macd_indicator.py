@@ -12,6 +12,10 @@ import stockstats
 # today = enddate = datetime.date.today()
 # stock_id = '000938'
 
+#数据库连接
+
+
+cursor = cnx.cursor()
 
 class MACD_INDICATOR(object):
 
@@ -22,17 +26,14 @@ class MACD_INDICATOR(object):
         self.indicator_end_time = end_time
         self.indicator_code = code
         self.period = period
-        #数据库连接
 
-
-        cursor = cnx.cursor()
         before_start_time = start_time-datetime.timedelta(days=60)
         query = "SELECT date,open,high,close,low,volume,amount,lpad(code,6,'0') FROM stock_market_hist_kline_nofuquan WHERE date BETWEEN %s and %s and code=%s"
         cursor.execute(query, (before_start_time, end_time, code))
         data = cursor.fetchall()
         df = pd.DataFrame(data, columns=['date', 'open', 'high', 'close', 'low', 'volume', 'amount', 'code'])
-        if len(df) < 60:  # 因MACD默认的慢线参数是26，如要获取准确的MACD值，尽量延长时间周期
-            print('time period is too short for MACD calculation')
+        # if len(df) < 60:  # 因MACD默认的慢线参数是26，如要获取准确的MACD值，尽量延长时间周期
+        #     print('time period is too short for MACD calculation')
         df = df.sort_values(by=['date'], ascending=True)
         self.stock_data = stockstats.StockDataFrame.retype(df)
         self.stock_data.get('macd')
@@ -47,8 +48,8 @@ class MACD_INDICATOR(object):
         macd_data = self.stock_data[parameter]
         points_num = 5  # 默认在5个点中取顶点
         rolling_data_max = self.stock_data[parameter].rolling(points_num, center=True).max()
-        if len(macd_data) < points_num:
-            raise ValueError  # 点数不够，无法判断顶点
+        # if len(macd_data) < points_num:
+        #     raise ValueError  # 点数不够，无法判断顶点
         peak_point_time_list = []
         peak_point_value_list = []
         for i in range(int(points_num/2), len(macd_data.index)-int(points_num/2)):
