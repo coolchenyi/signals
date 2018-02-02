@@ -20,9 +20,10 @@ start_time = datetime.date(2017,11,1)
 end_time = datetime.date(2018,2,1)
 start_time1 = datetime.date(2018, 1, 17)
 end_time1 = datetime.date(2018, 1, 25)
-stock_id = '600031'
+stock_id = '600016'
 ############
 #数据库连接部分
+
 
 
 cursor = cnx.cursor()
@@ -216,7 +217,7 @@ def get_kline_figure_trend_line(data_source, figure_tpye='1'):
         bottom_points_count = 0
         trend_line_start_time = bottom_points.index[bottom_points_count]
         trend_points,k = get_kline_trend(trend_line_start_time, trend_line_end_time, stock_id)
-        while (k>=0) and (bottom_points_count<len(bottom_points)):
+        while (k>=0) and (bottom_points_count<len(bottom_points)-1):
             bottom_points_count += 1
             trend_line_start_time = bottom_points.index[bottom_points_count]
             trend_points1, k1 = get_kline_trend(trend_line_start_time, trend_line_end_time, stock_id)
