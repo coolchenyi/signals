@@ -11,96 +11,120 @@ import datetime
 import mysql.connector
 import matplotlib.finance as mpf
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 
 from sklearn import linear_model
-from macd_indicator import MACD_INDICATOR
+
 
 start_time = datetime.date(2017,11,1)
-end_time = datetime.date(2017,12,30)
-start_time1 = datetime.date(2017, 12, 21)
-end_time1 = datetime.date(2017, 12, 30)
+end_time = datetime.date(2018,2,1)
+start_time1 = datetime.date(2018, 1, 17)
+end_time1 = datetime.date(2018, 1, 25)
 stock_id = '600031'
-#########
+############
 #数据库连接部分
+
 
 cursor = cnx.cursor()
 
-############
+###########
+###########
+#指标数据源构造
+before_start_time = start_time-datetime.timedelta(days=60)  # 因MACD默认的慢线参数是26，如要获取准确的MACD值，尽量延长时间周期
+query = "SELECT date,open,high,close,low,lpad(code,6,'0') FROM stock_market_hist_kline_day WHERE date BETWEEN %s and %s and code=%s"
+cursor.execute(query, (before_start_time, end_time, stock_id))
+data = cursor.fetchall()
+df = pd.DataFrame(data, columns=['date', 'open', 'high', 'close', 'low', 'code'])
+df = df.sort_values(by=['date'], ascending=True)
+data_source = stockstats.StockDataFrame.retype(df)
+data_source.get('macd')
+data_source = data_source.drop(data_source[data_source.index < start_time].index)
+# print(data_source)
+##########
 
-def get_peak_points(start_time, end_time, stock_id, period='day', price_type='high'):
+
+
+def get_kline_peak_points(data_source, fit_data_type='high'):
     '''
 
-    :param start_time: 时间段内的开始时间
-    :param end_time: 时间段内的结束时间
-    :param stock_id: 获取顶点的股票
-    :param period: 时间周期，以日、60分钟、30分钟、15分钟等为间隔
-    :param price_type: 默认按照最高价'high'来判断最高点
+    :param data_source: 数据源
+    :param fit_data_type: 默认按照最高价'high'来判断最高点
     :return:返回该时间段内的价格顶点
     取5个点的数据，判断中间点的数值是否是最大值，如是则判定为顶点
 
     '''
-    query = "SELECT date,open,high,close,low,lpad(code,6,'0') FROM stock_market_hist_kline_nofuquan WHERE date BETWEEN %s and %s and code=%s"
-    cursor.execute(query, (start_time, end_time, stock_id))
-    data = cursor.fetchall()
-    df = pd.DataFrame(data, columns=['date', 'open', 'high', 'close', 'low', 'code'])
-    df = df.sort_values(by=['date'], ascending=True)
     points_num = 5  # 默认在5个点中取顶点
-    rolling_data_max = df[price_type].rolling(points_num, center=True).max()
+    rolling_data_max = data_source[fit_data_type].rolling(points_num, center=True).max()
     peak_point_time_list = []
     peak_point_value_list = []
-    for i in range(int(points_num/2), len(df)-int(points_num/2)):
-        middle_point = df.iloc[i]['date']
-        middle_point_value = float(df.iloc[i][price_type])  #注意数据类型转换
-        print(rolling_data_max[i],middle_point_value)
+    for i in range(int(points_num/2), len(data_source)-int(points_num/2)):
+        middle_point_time = data_source.index[i]
+        middle_point_value = float(data_source.iloc[i][fit_data_type])  #注意数据类型转换
         if rolling_data_max[i] == middle_point_value:  # 判断是否顶点
+            peak_point_time_list.append(middle_point_time)
+            peak_point_value_list.append(middle_point_value)
+    s = pd.Series(peak_point_value_list, index=peak_point_time_list)
+    return s
+
+# print(get_kline_peak_points(data_source))
+
+def get_kline_bottom_points(data_source, fit_data_type='low'):
+    '''
+
+    :param data_source: 数据源
+    :param fit_data_type: 默认按照最低价'low'来判断最低点
+    :return:返回该时间段内的价格底点
+    取5个点的数据，判断中间点的数值是否是最小值，如是则判定为底点
+
+    '''
+    points_num = 5  # 默认在5个点中取顶点
+    rolling_data_min = data_source[fit_data_type].rolling(points_num, center=True).min()
+    bottom_point_time_list = []
+    bottom_point_value_list = []
+    for i in range(int(points_num/2), len(data_source)-int(points_num/2)):
+        middle_point_time = data_source.index[i]
+        middle_point_value = float(data_source.iloc[i][fit_data_type])  #注意数据类型转换
+        if rolling_data_min[i] == middle_point_value:  # 判断是否顶点
+            bottom_point_time_list.append(middle_point_time)
+            bottom_point_value_list.append(middle_point_value)
+    s = pd.Series(bottom_point_value_list, index=bottom_point_time_list)
+    return s
+
+# print(get_kline_bottom_points(data_source))
+
+def get_macd_peak_points(data_source, fit_data_type='macd'):
+    '''
+
+    :param period:时间周期
+    :param fit_data_type:顶点取数指标类型
+    :return:
+    '''
+    macd_data = data_source[fit_data_type]
+    points_num = 5  # 默认在5个点中取顶点
+    rolling_data_max = data_source[fit_data_type].rolling(points_num, center=True).max()
+    # if len(macd_data) < points_num:
+    #     raise ValueError  # 点数不够，无法判断顶点
+    peak_point_time_list = []
+    peak_point_value_list = []
+    for i in range(int(points_num/2), len(macd_data.index)-int(points_num/2)):
+        middle_point = macd_data.index[i]
+        middle_point_value = macd_data.loc[macd_data.index[i]]
+        if middle_point_value == rolling_data_max.loc[middle_point]:  # 判断是否顶点
             peak_point_time_list.append(middle_point)
             peak_point_value_list.append(middle_point_value)
     s = pd.Series(peak_point_value_list, index=peak_point_time_list)
     return s
 
-# print(get_peak_points(start_time, end_time, stock_id))
+# print(get_macd_peak_points(data_source, fit_data_type='macd'))
 
-def get_bottom_points(start_time, end_time, stock_id, period='day', price_type='low'):
-    '''
-
-    :param start_time: 时间段内的开始时间
-    :param end_time: 时间段内的结束时间
-    :param stock_id: 获取底点的股票
-    :param period: 时间周期，以日、60分钟、30分钟、15分钟等为间隔
-    :param price_type: 默认按照最低价'low'来判断最低点
-    :return:返回该时间段内的价格底点
-    取5个点的数据，判断中间点的数值是否是最小值，如是则判定为底点
-
-    '''
-    query = "SELECT date,open,high,close,low,lpad(code,6,'0') FROM stock_market_hist_kline_nofuquan WHERE date BETWEEN %s and %s and code=%s"
-    cursor.execute(query, (start_time, end_time, stock_id))
-    data = cursor.fetchall()
-    df = pd.DataFrame(data, columns=['date', 'open', 'high', 'close', 'low', 'code'])
-    df = df.sort_values(by=['date'], ascending=True)
-    points_num = 5  # 默认在5个点中取顶点
-    rolling_data_min = df[price_type].rolling(points_num, center=True).min()
-    bottom_point_time_list = []
-    bottom_point_value_list = []
-    for i in range(int(points_num/2), len(df)-int(points_num/2)):
-        middle_point = df.iloc[i]['date']
-        middle_point_value = float(df.iloc[i][price_type])  #注意数据类型转换
-        print(rolling_data_min[i],middle_point_value)
-        if rolling_data_min[i] == middle_point_value:  # 判断是否顶点
-            bottom_point_time_list.append(middle_point)
-            bottom_point_value_list.append(middle_point_value)
-    s = pd.Series(bottom_point_value_list, index=bottom_point_time_list)
-    return s
-
-# print(get_bottom_points(start_time, end_time, stock_id))
-
-def get_kline_trend(start_time, end_time, stock_id, period='day', price_type='high'):
+def get_kline_trend(start_time, end_time, stock_id, period='day', fit_data_type='high'):
     '''
 
     :param start_time:时间段内的开始时间
     :param end_time:时间段内的结束时间
     :param stock_id:股票代码
     :param period:交易周期，日、60分钟、30分钟、15分钟
-    :param price_type:按照哪个价格进行趋势线拟合
+    :param fit_data_type:按照哪个价格进行趋势线拟合
     :return:
     传入开始时间和结束时间，交易周期（日、60分钟、30分钟），拟合的价格类
     获取时间段内的最高价/最低价/收盘价
@@ -110,13 +134,13 @@ def get_kline_trend(start_time, end_time, stock_id, period='day', price_type='hi
 
     '''
 
-    query = "SELECT date,open,high,close,low,volume,amount,lpad(code,6,'0') FROM stock_market_hist_kline_nofuquan WHERE date BETWEEN %s and %s and code=%s"
+    query = "SELECT date,open,high,close,low,lpad(code,6,'0') FROM stock_market_hist_kline_day WHERE date BETWEEN %s and %s and code=%s"
     cursor.execute(query, (start_time, end_time, stock_id))
     data = cursor.fetchall()
-    df = pd.DataFrame(data, columns=['date', 'open', 'high', 'close', 'low', 'volume', 'amount', 'code'])
+    df = pd.DataFrame(data, columns=['date', 'open', 'high', 'close', 'low',  'code'])
     time_map = df['date']  # 构造一个交易时间与X轴坐标的映射 ,取整型数
     x_data = time_map.index.values
-    y_data = df['high'].values
+    y_data = df[fit_data_type].values
     # print(x_data, y_data)
     X = x_data.reshape(-1, 1)  # 将x数据转化为n samples，1 feature 的数据，numpy array or sparse matrix of shape [n_samples,n_features]
     Y = y_data.reshape(-1, 1)  # 将y数据转化为n samles，1 target 的数据，numpy array of shape [n_samples, n_targets]
@@ -127,13 +151,14 @@ def get_kline_trend(start_time, end_time, stock_id, period='day', price_type='hi
     y_end = reg.predict(x_data[-1])
     trend_points = pd.Series({time_map.iloc[0]: y_start[0][0], time_map.iloc[-1]: y_end[0][0]})
     # print(trend_points )
-    return trend_points
+    return trend_points,reg.coef_[0][0]
 
 # print(get_kline_trend(start_time,end_time,stock_id))
 
-def get_macd_trend(data_source,start_time, end_time, stock_id, period='day', macd_trend_type='macdh'):
+
+def get_macd_trend(data_source,start_time, end_time, fit_data_type='macd'):
     '''
-    :param data_source:macd指标计算结果的数据源。因macd指标值计算需要更长的时间段，所以不能直接使用start_time来取数计算
+    :param data_source:macd指标计算结果的数据源。
     :param start_time: macd趋势线绘制的时间坐标轴上开始时间
     :param end_time: macd趋势线绘制的时间坐标轴上结束时间
     :param stock_id: 所绘趋势线的股票代码
@@ -141,11 +166,12 @@ def get_macd_trend(data_source,start_time, end_time, stock_id, period='day', mac
     :param macd_trend_type: 使用哪个指标值来拟合出趋势线，dif：'macd'，dea:'macds'，bar:'macdh'
     :return:
     '''
-    #将数据源上的时间对齐开始时间
+    #将数据源上的时间对齐开始时间和结束时间
     macd_trend_df = data_source.drop(data_source[data_source.index < start_time].index)
+    macd_trend_df = macd_trend_df.drop(macd_trend_df[macd_trend_df.index > end_time].index)
     time_map = pd.Series(macd_trend_df.index)   # 构造一个交易时间与X轴坐标的映射 ,取整型数
     x_data = time_map.index.values
-    y_data = macd_trend_df['macdh'].values
+    y_data = macd_trend_df[fit_data_type].values
     X = x_data.reshape(-1,1)
     Y = y_data.reshape(-1,1)
     reg = linear_model.LinearRegression()
@@ -153,35 +179,127 @@ def get_macd_trend(data_source,start_time, end_time, stock_id, period='day', mac
     y_start = reg.predict([0])
     y_end = reg.predict(x_data[-1])
     trend_points = pd.Series({time_map.iloc[0]: y_start[0][0], time_map.iloc[-1]: y_end[0][0]})
-    return trend_points
+    return trend_points, reg.coef_[0][0]
 
-data_source = MACD_INDICATOR(start_time, end_time, stock_id).stock_data
-print(get_macd_trend(data_source,start_time1, end_time1, stock_id))
+# print(get_macd_trend(data_source,start_time1, end_time1))
 
-def draw_kline_macd_trend_line(start_time, end_time, stock_id, trend_points = None):
+def get_kline_figure_trend_line(data_source, figure_tpye='1'):
     '''
-    :param start_time: 图像绘制的时间坐标轴上开始时间
-    :param end_time: 图像绘制的时间坐标轴上的结束时间
-    :param stock_id: 所绘图像的股票代码
-    :param trend_points: 线性回归拟合后的趋势线段两端的顶点
-    :return:绘出图像，返回空
+    :param figure_start_time: 所绘图形上的坐标轴开始时间
+    :param figure_end_time: 所绘图形上的坐标轴结束时间（最新时间）
+    :param stock_id: 股票代码
+    :param period: 时间周期
+    :param figure_tpye:顶背离图形 ：1 ；底背离图形 ：0
+    :return: [trend_line_start_time,trend_line_end_time] 所绘趋势线的开始时间和结束时间
+    返回k线图上作趋势线段的两端顶点。
+    顶背离图形采用趋势线斜率单调递减原则(底背离算法类似)。具体算法如下：
+    *顶点、底点按照最近时间到最早时间排序
+    *判断最近的一个点是顶点还是底点，如果是顶点，则结束时间设定为该顶点，否则结束时间设定为最新时间。开始时间设定为最近一个底点。
+    *计算趋势线的斜率k
+    *While k>0:
+        增加前一个顶点。即开始时间设定为前一个顶点的时间。
+        计算趋势线斜率k1
+        If k1> k,则跳出while loop
+        否则k=k1，继续循环
+    *输出趋势线两端点和斜率
+
+    '''
+    bottom_points = get_kline_bottom_points(data_source)
+    peak_points = get_kline_peak_points(data_source)
+    bottom_points.sort_index(ascending=False, inplace=True)
+    peak_points.sort_index(ascending=False, inplace=True)
+    if figure_tpye=='1':
+        if peak_points.index[0]>bottom_points.index[0]:
+            trend_line_end_time = peak_points.index[0]
+        else:
+            trend_line_end_time = data_source.index[-1]  #趋势线结束时间为最新时间
+        bottom_points_count = 0
+        trend_line_start_time = bottom_points.index[bottom_points_count]
+        trend_points,k = get_kline_trend(trend_line_start_time, trend_line_end_time, stock_id)
+        while (k>=0) and (bottom_points_count<len(bottom_points)):
+            bottom_points_count += 1
+            trend_line_start_time = bottom_points.index[bottom_points_count]
+            trend_points1, k1 = get_kline_trend(trend_line_start_time, trend_line_end_time, stock_id)
+            # print('trend_points1, k1',trend_points1, k1)
+            if k1 > k:
+                break
+            else:
+                trend_points, k = trend_points1,k1
+        # print(k)
+        # print(trend_points)
+        return  trend_points,k
+    elif figure_tpye=='0':
+        return
+    else:
+        return
+
+# print(get_kline_figure_trend_line(data_source,figure_tpye='1'))
+
+def get_macd_figure_trend_line(data_source, kline_trend_start_time, kline_trend_end_time, figure_tpye='1'):
+    '''
+    :param data_source: macd指标数据源
+    :param kline_trend_start_time:  k线趋势线对应的开始时间
+    :param kline_trend_end_time: k线趋势线对应的结束时间
+    :param figure_tpye: 顶背离图形 ：1 ；底背离图形 ：0
+    :return: [trend_line_start_time,trend_line_end_time] ，k 所绘趋势线的开始时间和结束时间以及斜率
+    在k线趋势线的时间段内寻找macd值的顶点，然后作趋势线段。
+    '''
+    macd_trend_df = data_source
+    #截取时间段内数据
+    macd_trend_df = macd_trend_df.drop(macd_trend_df[macd_trend_df.index < kline_trend_start_time].index)
+    macd_trend_df = macd_trend_df.drop(macd_trend_df[macd_trend_df.index > kline_trend_end_time].index)
+    if figure_tpye=='1':
+        peak_points = get_macd_peak_points(macd_trend_df)
+        peak_points.sort_values(ascending=False, inplace=True)
+        # print(peak_points)
+        if len(peak_points)==0:  #没有顶点的处理
+            peak_point_start_time = kline_trend_start_time
+        else:
+            peak_point_start_time = peak_points.index[0]
+        trend_points,k = get_macd_trend(macd_trend_df,peak_point_start_time,kline_trend_end_time)
+        # print(trend_points)
+        return trend_points,k
+    elif figure_tpye=='0':
+        return
+    else:
+        return
+
+# print(get_macd_figure_trend_line(data_source, start_time1, end_time1, figure_tpye='1'))
+
+def format_date(x, pos=None):   #日期与整形数映射
+    thisind = np.clip(int(x+0.5), 0, len(data_source)-1)
+    return data_source.index[thisind].strftime('%Y-%m-%d')
+
+
+def get_ax_position(time_series):
+    # 将时间转化为x轴上整型数位置
+    ax_index = pd.Series(data_source.index)
+    s1 = ax_index.where(ax_index.isin(time_series.values))
+    s1.dropna(inplace = True)
+    # print(s1)
+    return s1.index.values
+
+print(get_ax_position(get_macd_peak_points(data_source).index))
+
+def draw_kline_macd_trend_line(data_source):
+    '''
     绘图步骤：
     1、绘制K线图
     2、绘制k线趋势线
     3、绘制macd指标图
     4、绘制macd指标变化趋势线
     '''
-    # 重新选择k线图绘制的时间区间,注意顺序为date，open，close，high，low
-    query = "SELECT date,open,close,high,low,volume,amount,lpad(code,6,'0') FROM stock_market_hist_kline_nofuquan WHERE date BETWEEN %s and %s and code=%s"
-    cursor.execute(query, (start_time, end_time, stock_id))
-    data = cursor.fetchall()
-    df = pd.DataFrame(data, columns=['date', 'open', 'close', 'high',  'low', 'volume', 'amount', 'code'])
+    #先用整数作为下标，然后利用matplotlib.ticker.FuncFormatter改变x轴刻度的格式
+    N = len(data_source)
+    ind = np.arange(N)
+    data_source['time_pos'] = ind
+    # print(data_source)
     qutotes = []
     for index,(d,o,c,h,l) in enumerate(
-        zip(df.date, df.open, df.close, df.high, df.low )
+        zip(data_source.time_pos, data_source.open, data_source.close, data_source.high, data_source.low )
     ):
         #蜡烛图的日期使用date2num转化为数值
-        d = mpf.date2num(d)
+        # d = mpf.date2num(d)
         val = (d,o,c,h,l)
         qutotes.append(val)
     #绘制图表
@@ -192,26 +310,19 @@ def draw_kline_macd_trend_line(start_time, end_time, stock_id, trend_points = No
     rect2 = [left, 0.1, width, 0.2]
     fig = plt.figure(figsize=(16,9),facecolor='white')
     axescolor = '#f6f6f6'  # the axes background color
-
     ax1 = fig.add_axes(rect1, axisbg=axescolor)  # left, bottom, width, height
     plt.title('Stock ID:'+stock_id+'   Data start from:'+str(start_time)+' to :'+str(end_time))
     ax2 = fig.add_axes(rect2, axisbg=axescolor, sharex=ax1)
-
-    # plt.title('ssssss')
     #绘制k线图，使用candlestick_ochl函数绘图，ochl代表open，close，high，low
     mpf.candlestick_ochl(ax1, qutotes, width=0.6, colorup='red', colordown='green', alpha=0.75)
     ax1.autoscale_view()
-    ax1.xaxis_date()
-    # ax1.plot(trend_points.index,trend_points.values)
-    #绘制macd图,因macd慢线由26天数据计算，将计算的数据期间拉长
-    before_start_time = start_time-datetime.timedelta(days=60)
-    macd_data = MACD_INDICATOR(before_start_time, end_time, stock_id, 'day')
-    #开始时间与k线图上的开始时间对齐
-    macd_data.stock_data.drop(macd_data.stock_data[macd_data.stock_data.index<start_time].index, inplace=True)
-    kl_index = macd_data.stock_data.index
-    dif = macd_data.stock_data['macd']
-    dea = macd_data.stock_data['macds']
-    bar = macd_data.stock_data['macdh']
+    # ax1.xaxis_date()
+    #绘制macd图
+    # kl_index = data_source.index
+    kl_index = data_source.time_pos
+    dif = data_source['macd']
+    dea = data_source['macds']
+    bar = data_source['macdh']
     ax2.plot(kl_index, dif, label='macd dif')
     ax2.plot(kl_index, dea, label='dea')
     bar_red = np.where(bar > 0, bar, 0)
@@ -220,29 +331,23 @@ def draw_kline_macd_trend_line(start_time, end_time, stock_id, trend_points = No
     ax2.bar(kl_index, bar_red, facecolor='red', label='hist bar')
     # 绘制bar<0的柱状图
     ax2.bar(kl_index, bar_green, facecolor='green', label='hist bar')
-    # ax2.legend(loc='left')
-    #绘制macd顶点连线
-    macd_peak_points = macd_data.get_peak_points()
-    ax2.plot(macd_peak_points.index, macd_peak_points.values, color='red')
-    #绘制k线趋势线
-    for i in range(len(macd_peak_points)-1):
-        trend_points = get_kline_trend(macd_peak_points.index[i],macd_peak_points.index[i+1], stock_id)
-        ax1.plot(trend_points.index,trend_points.values)
-    #输出股票每段趋势线的开始结束时间
-    trendline_list = []
-    for i in range(len(macd_peak_points)-1):
-        trendline_list.append([stock_id,macd_peak_points.index[i],macd_peak_points.index[i+1],None])
-    trendline_df = pd.DataFrame(trendline_list,columns=['stock_id','start_time','end_time','signal'])
-    trendline_output_path = r'C:\smartkline\output\macd\\' + stock_id + '_'+str(start_time) + '_'+str(end_time) + '.csv'
-    trendline_df.to_csv(trendline_output_path)
-    #输出图表
-    fig_output_path = r'C:\smartkline\output\macd\\' + stock_id + '_'+str(start_time) + '_'+str(end_time) + '.png'
-    plt.savefig(fig_output_path)
-    # plt.show()
+    ax2.legend(loc='upper left')
+    # 绘制k线趋势线
+    kline_trend_points,_ = get_kline_figure_trend_line(data_source)
+    ax1.plot(get_ax_position(kline_trend_points.index), kline_trend_points.values, color='blue')
+    #绘制macd趋势线
+    macd_trend_points,_ = get_macd_figure_trend_line(data_source, kline_trend_points.index[0],kline_trend_points.index[1])
+    ax2.plot(get_ax_position(macd_trend_points.index), macd_trend_points.values, color='blue')
+    # #输出图表
+    # fig_output_path = r'C:\smartkline\output\macd\\' + stock_id + '_'+str(start_time) + '_'+str(end_time) + '.png'
+    # plt.savefig(fig_output_path)
+    ax1.xaxis.set_major_formatter(ticker.FuncFormatter(format_date))
+    fig.autofmt_xdate()
+    plt.show()
     return
 
 #测试数据
-# draw_kline_macd_trend_line(start_time,end_time,stock_id)
+draw_kline_macd_trend_line(data_source)
 #批量生成
 # query1 = "SELECT DISTINCT lpad(code,6,'0') FROM stock_market_hist_kline_nofuquan WHERE date BETWEEN %s and %s"
 # cursor.execute(query1,(start_time, end_time))
