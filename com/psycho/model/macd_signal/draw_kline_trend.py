@@ -16,22 +16,24 @@ import matplotlib.ticker as ticker
 from sklearn import linear_model
 
 
-start_time = datetime.date(2017,9,1)
-end_time = datetime.date(2018,2,2)
-start_time1 = datetime.date(2018, 1, 17)
-end_time1 = datetime.date(2018, 1, 25)
-stock_id = '600031'
+# start_time = datetime.date(2017,9,1)
+# end_time = datetime.date(2018,2,2)
+
+start_time = datetime.datetime(2018,1,1,10,0,0)
+end_time = datetime.datetime(2018,2,5,15,0,0)
+stock_id = '601998'
 ############
 #数据库连接部分
-
 
 cursor = cnx.cursor()
 
 ###########
 ###########
 #指标数据源构造
-before_start_time = start_time-datetime.timedelta(days=60)  # 因MACD默认的慢线参数是26，如要获取准确的MACD值，尽量延长时间周期
-query = "SELECT date,open,high,close,low,lpad(code,6,'0') FROM stock_market_hist_kline_day WHERE date BETWEEN %s and %s and code=%s"
+# before_start_time = start_time-datetime.timedelta(days=60)  # 因MACD默认的慢线参数是26，如要获取准确的MACD值，尽量延长时间周期
+before_start_time = start_time-datetime.timedelta(days=10)  #分钟粒度数据
+# query = "SELECT date,open,high,close,low,lpad(code,6,'0') FROM stock_market_hist_kline_day WHERE date BETWEEN %s and %s and code=%s"
+query = "SELECT date,open,high,close,low,lpad(code,6,'0') FROM smartk_demo.stock_mk_kline_sixty WHERE date BETWEEN %s and %s and code=%s"
 cursor.execute(query, (before_start_time, end_time, stock_id))
 data = cursor.fetchall()
 df = pd.DataFrame(data, columns=['date', 'open', 'high', 'close', 'low', 'code'])
@@ -56,7 +58,7 @@ def get_kline_peak_points(data_source, fit_data_type='close', points_num=5):
     :param data_source: 数据源
     :param fit_data_type: 默认按照最高价'high'来判断最高点
     :return:返回该时间段内的价格顶点
-    默认取7个点的数据，判断中间点的数值是否是最大值，如是则判定为顶点
+    如果是30分钟周期，默认取7个点的数据，如果是60分钟或日为交易周期，默认取5个点的数据。判断中间点的数值是否是最大值，如是则判定为顶点
 
     '''
 
@@ -370,7 +372,7 @@ def draw_kline_macd_trend_line(data_source):
     ax2.legend(loc='upper left')
     # 绘制k线趋势线
     kline_trend_points,_ = get_kline_figure_trend_line(data_source)
-    parallel_distance_kline = float(data_source['close'].loc[kline_trend_points.index.values[0]]) - kline_trend_points[0] #计算线段进行平移距离
+    parallel_distance_kline = float(data_source['close'].loc[kline_trend_points.index.values[0]]) - kline_trend_points[0] #计算线段平移距离
     ax1.plot(get_ax_position(kline_trend_points.index), kline_trend_points.values+parallel_distance_kline, color='blue', linewidth=4)
     #绘制macd趋势线
     macd_trend_points,_ = get_macd_trend(data_source, kline_trend_points.index[0],kline_trend_points.index[1])
