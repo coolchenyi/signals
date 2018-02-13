@@ -16,24 +16,25 @@ import matplotlib.ticker as ticker
 from sklearn import linear_model
 
 
-# start_time = datetime.date(2017,9,1)
-# end_time = datetime.date(2018,2,2)
+start_time = datetime.date(2017,9,1)
+end_time = datetime.date(2018,2,2)
 
-start_time = datetime.datetime(2018,1,1,10,0,0)
-end_time = datetime.datetime(2018,2,5,15,0,0)
-stock_id = '601998'
+# start_time = datetime.datetime(2018,1,1,10,0,0)
+# end_time = datetime.datetime(2018,2,5,15,0,0)
+stock_id = '600016'
 ############
 #数据库连接部分
+
 
 cursor = cnx.cursor()
 
 ###########
 ###########
 #指标数据源构造
-# before_start_time = start_time-datetime.timedelta(days=60)  # 因MACD默认的慢线参数是26，如要获取准确的MACD值，尽量延长时间周期
-before_start_time = start_time-datetime.timedelta(days=10)  #分钟粒度数据
-# query = "SELECT date,open,high,close,low,lpad(code,6,'0') FROM stock_market_hist_kline_day WHERE date BETWEEN %s and %s and code=%s"
-query = "SELECT date,open,high,close,low,lpad(code,6,'0') FROM smartk_demo.stock_mk_kline_sixty WHERE date BETWEEN %s and %s and code=%s"
+before_start_time = start_time-datetime.timedelta(days=60)  # 因MACD默认的慢线参数是26，如要获取准确的MACD值，尽量延长时间周期
+# before_start_time = start_time-datetime.timedelta(days=10)  #分钟粒度数据
+query = "SELECT date,open,high,close,low,lpad(code,6,'0') FROM stock_market_hist_kline_day WHERE date BETWEEN %s and %s and code=%s"
+# query = "SELECT date,open,high,close,low,lpad(code,6,'0') FROM smartk_demo.stock_mk_kline_sixty WHERE date BETWEEN %s and %s and code=%s"
 cursor.execute(query, (before_start_time, end_time, stock_id))
 data = cursor.fetchall()
 df = pd.DataFrame(data, columns=['date', 'open', 'high', 'close', 'low', 'code'])
@@ -52,7 +53,7 @@ def get_ax_position(time_series):
     # print(s1)
     return s1.index.values
 
-def get_kline_peak_points(data_source, fit_data_type='close', points_num=5):
+def get_kline_peak_points(data_source, fit_data_type='close', points_num=7):
     '''
 
     :param data_source: 数据源
@@ -132,7 +133,7 @@ def get_macd_peak_points(data_source, fit_data_type='macd'):
 
 # print(get_macd_peak_points(data_source, fit_data_type='macd'))
 
-def get_kline_trend(data_source, start_time, end_time, stock_id, period='day', fit_data_type='close'):
+def get_kline_trend(data_source, start_time, end_time, stock_id, period='day', fit_data_type='all'):
     '''
 
     :param start_time:时间段内的开始时间
@@ -153,8 +154,20 @@ def get_kline_trend(data_source, start_time, end_time, stock_id, period='day', f
     df = df.drop(df[df.index < start_time].index)
     df = df.drop(df[df.index > end_time].index)
     time_map = pd.Series(df.index)  # 构造一个交易时间与X轴坐标的映射 ,取整型数
-    x_data = time_map.index.values
-    y_data = df[fit_data_type].values
+    #如何是'all'，则将开盘、收盘、最高、最低价都进行拟合，否则默认按收盘价拟合
+    if fit_data_type=='all':
+        x_data = time_map.index.values
+        x_data = np.append(x_data, x_data)
+        x_data = np.append(x_data, x_data)
+        y_data = df['close'].values
+        y_data = np.append(y_data, df['open'].values)
+        y_data = np.append(y_data, df['high'].values)
+        y_data = np.append(y_data, df['low'].values)
+    else:
+        x_data = time_map.index.values
+        y_data = df[fit_data_type].values
+
+
     # print(x_data, y_data)
     X = x_data.reshape(-1, 1)  # 将x数据转化为n samples，1 feature 的数据，numpy array or sparse matrix of shape [n_samples,n_features]
     Y = y_data.reshape(-1, 1)  # 将y数据转化为n samles，1 target 的数据，numpy array of shape [n_samples, n_targets]
